@@ -103,7 +103,8 @@ expose `$PORT`, keep the instance warm.
 | `MELTWATER_API_KEY` | for MIRA | Meltwater API token (Account → Meltwater API). |
 | `PORT` / `HOST` | no | Bind address (host usually sets `PORT`). |
 | `MCP_MOUNT_PATH` | no | MCP path, default `/mcp`. |
-| `HTTP_TIMEOUT`, `MAX_RETRIES`, `MICRO_CACHE_TTL` | no | HTTP tuning. |
+| `MIRA_TIMEOUT` | no | MIRA request timeout (seconds), default 120 — grounded answers can take ~30s+. |
+| `HTTP_TIMEOUT`, `MAX_RETRIES`, `MICRO_CACHE_TTL` | no | HTTP tuning (BSE). |
 
 ---
 

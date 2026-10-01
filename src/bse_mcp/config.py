@@ -33,7 +33,8 @@ class Settings:
     bse_web_base: str = "https://www.bseindia.com/"
 
     # --- HTTP tuning ---
-    http_timeout: float = 20.0
+    http_timeout: float = 20.0  # BSE: fast endpoints
+    mira_timeout: float = 120.0  # MIRA: grounded answers can take ~30s+
     max_retries: int = 2
     micro_cache_ttl: float = 5.0  # seconds; in-memory only, collapses duplicate bursts
 
@@ -62,6 +63,7 @@ class Settings:
             bse_api_base=os.getenv("BSE_API_BASE", "https://api.bseindia.com/BseIndiaAPI/api"),
             bse_web_base=os.getenv("BSE_WEB_BASE", "https://www.bseindia.com/"),
             http_timeout=float(os.getenv("HTTP_TIMEOUT", "20")),
+            mira_timeout=float(os.getenv("MIRA_TIMEOUT", "120")),
             max_retries=int(os.getenv("MAX_RETRIES", "2")),
             micro_cache_ttl=float(os.getenv("MICRO_CACHE_TTL", "5")),
             host=os.getenv("HOST", "0.0.0.0"),

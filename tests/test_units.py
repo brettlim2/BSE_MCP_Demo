@@ -48,16 +48,49 @@ def test_scaled_qty():
 
 
 def test_mira_extraction_and_dedup():
+    # Real MIRA shape: annotations are wrapped in a typed envelope, and the same
+    # citation may appear twice (dedup expected).
     data = {
-        "output": [{"content": [{"type": "text", "text": "A"}, {"type": "text", "text": "B"}]}],
-        "annotations": [
-            {"title": "R", "url": "https://r", "type": "news"},
-            {"title": "R", "url": "https://r", "type": "news"},
+        "output": [
+            {
+                "content": [
+                    {"type": "text", "text": "A"},
+                    {"type": "text", "text": "B"},
+                    {
+                        "type": "text",
+                        "annotations": [
+                            {
+                                "news_document_citation": {
+                                    "citation_type": "news_document_citation",
+                                    "title": "Headline",
+                                    "url": "https://news.example/x",
+                                }
+                            },
+                            {
+                                "news_document_citation": {
+                                    "citation_type": "news_document_citation",
+                                    "title": "Headline",
+                                    "url": "https://news.example/x",
+                                }
+                            },
+                        ],
+                    },
+                ]
+            }
         ],
     }
     assert _extract_output_text(data) == "A\nB"
     cites = _extract_citations(data)
-    assert len(cites) == 1 and cites[0].type == "news"
+    assert len(cites) == 1
+    assert cites[0].type == "news"
+    assert cites[0].url == "https://news.example/x"
+
+
+def test_mira_citation_flat_shape():
+    # Also handle a flat annotation (no typed envelope).
+    data = {"annotations": [{"title": "T", "url": "https://t", "type": "social"}]}
+    cites = _extract_citations(data)
+    assert len(cites) == 1 and cites[0].type == "social"
 
 
 def test_tools_registered():

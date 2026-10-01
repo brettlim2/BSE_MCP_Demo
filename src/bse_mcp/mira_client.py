@@ -58,7 +58,7 @@ class MiraClient:
         self._limiter = _RateLimiter(rate=60, per=60.0)
         self._client = httpx.AsyncClient(
             base_url=settings.meltwater_base_url,
-            timeout=settings.http_timeout,
+            timeout=settings.mira_timeout,
         )
 
     async def aclose(self) -> None:
@@ -98,8 +98,13 @@ class MiraClient:
             raise MiraError(
                 f"MIRA responded {exc.response.status_code}: {exc.response.text[:300]}"
             ) from exc
+        except httpx.TimeoutException as exc:
+            raise MiraError(
+                f"MIRA timed out after {self._s.mira_timeout:.0f}s "
+                f"({type(exc).__name__}). Grounded queries can be slow — raise MIRA_TIMEOUT."
+            ) from exc
         except (httpx.HTTPError, ValueError) as exc:
-            raise MiraError(f"MIRA request failed: {exc}") from exc
+            raise MiraError(f"MIRA request failed: {type(exc).__name__}: {exc}") from exc
 
         answer_text = data.get("output_text") if isinstance(data, dict) else None
         if not answer_text:
@@ -110,7 +115,7 @@ class MiraClient:
             find_value(data, "thread_id", "threadId", "Thread-ID") if isinstance(data, (dict, list)) else None
         )
         return MiraAnswer(
-            answer=answer_text or "",
+            answer=(answer_text or "").strip(),
             citations=citations,
             thread_id=str(returned_thread) if returned_thread else thread_id,
         )
@@ -125,8 +130,13 @@ class MiraClient:
             raise MiraError(
                 f"MIRA responded {exc.response.status_code}: {exc.response.text[:300]}"
             ) from exc
+        except httpx.TimeoutException as exc:
+            raise MiraError(
+                f"MIRA timed out after {self._s.mira_timeout:.0f}s "
+                f"({type(exc).__name__}). Raise MIRA_TIMEOUT if this persists."
+            ) from exc
         except (httpx.HTTPError, ValueError) as exc:
-            raise MiraError(f"MIRA request failed: {exc}") from exc
+            raise MiraError(f"MIRA request failed: {type(exc).__name__}: {exc}") from exc
 
         rows: list = []
         if isinstance(data, list):
@@ -167,28 +177,50 @@ def _extract_output_text(data: object) -> str | None:
 
 
 def _extract_citations(data: object) -> list[Citation]:
-    """Collect annotation objects from anywhere in the response."""
+    """Collect annotation objects from anywhere in the response.
+
+    MIRA wraps each annotation in a typed envelope, e.g.
+    ``{"news_document_citation": {"title": ..., "url": ..., "citation_type": ...}}``
+    (also ``social_``/``generic_`` variants). We unwrap one level when the fields
+    aren't directly on the annotation item.
+    """
     citations: list[Citation] = []
     seen: set[tuple[str | None, str | None]] = set()
 
+    def normalize(ann: dict) -> Citation | None:
+        title = ann.get("title") or ann.get("name")
+        url = ann.get("url") or ann.get("link")
+        ctype = ann.get("type") or ann.get("source") or ann.get("citation_type")
+        # Unwrap the typed envelope (news_document_citation, etc.) if needed.
+        if not (title or url):
+            for value in ann.values():
+                if isinstance(value, dict) and (value.get("title") or value.get("url")):
+                    title = value.get("title") or value.get("name")
+                    url = value.get("url") or value.get("link")
+                    ctype = value.get("citation_type") or value.get("type") or ctype
+                    break
+        if not (title or url):
+            return None
+        # "news_document_citation" -> "news"
+        type_label = _str(ctype)
+        if type_label:
+            type_label = type_label.replace("_document_citation", "").replace("_citation", "")
+        return Citation(title=_str(title), url=_str(url), type=type_label)
+
     def walk(node: object) -> None:
         if isinstance(node, dict):
-            if "annotations" in node and isinstance(node["annotations"], list):
-                for ann in node["annotations"]:
-                    if isinstance(ann, dict):
-                        title = ann.get("title") or ann.get("name")
-                        url = ann.get("url") or ann.get("link")
-                        ctype = ann.get("type") or ann.get("source")
-                        key = (title, url)
-                        if (title or url) and key not in seen:
-                            seen.add(key)
-                            citations.append(
-                                Citation(
-                                    title=_str(title),
-                                    url=_str(url),
-                                    type=_str(ctype),
-                                )
-                            )
+            annotations = node.get("annotations")
+            if isinstance(annotations, list):
+                for ann in annotations:
+                    if not isinstance(ann, dict):
+                        continue
+                    citation = normalize(ann)
+                    if citation is None:
+                        continue
+                    key = (citation.title, citation.url)
+                    if key not in seen:
+                        seen.add(key)
+                        citations.append(citation)
             for value in node.values():
                 walk(value)
         elif isinstance(node, list):
