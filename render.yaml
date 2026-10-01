@@ -1,0 +1,18 @@
+# Render.com blueprint for the public MCP endpoint.
+# Deploy: push this repo, then "New +" -> "Blueprint" in the Render dashboard.
+# The public MCP URL will be https://<service>.onrender.com/mcp
+services:
+  - type: web
+    name: bse-mcp
+    runtime: docker
+    plan: starter            # avoid the free tier's scale-to-zero (keeps BSE cookies warm)
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: MELTWATER_API_KEY
+        sync: false          # set as a secret in the dashboard
+      - key: MCP_API_KEYS
+        sync: false          # comma-separated client API keys
+      - key: HOST
+        value: 0.0.0.0
+      # PORT is provided by Render automatically.

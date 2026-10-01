@@ -1,0 +1,27 @@
+[project]
+name = "bse-mcp"
+version = "0.1.0"
+description = "Public MCP server exposing live BSE corporate disclosures, BSE stock prices, and Meltwater MIRA intelligence — stateless, no data stored."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "mcp[cli]>=2.0,<3",
+    "httpx>=0.27",
+    "pydantic>=2.6",
+    "uvicorn>=0.30",
+    "starlette>=0.37",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+bse-mcp = "bse_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bse_mcp"]

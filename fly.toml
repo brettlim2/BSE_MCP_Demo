@@ -1,0 +1,31 @@
+# Fly.io config (alternative host). Fly lets you pick a region whose egress IP
+# BSE is less likely to block, which is why it's offered alongside Render.
+#
+# Deploy:
+#   fly launch --no-deploy        # creates the app from this file
+#   fly secrets set MELTWATER_API_KEY=... MCP_API_KEYS=key1,key2
+#   fly deploy
+# Public MCP URL: https://<app>.fly.dev/mcp
+
+app = "bse-mcp"
+primary_region = "bom"          # Mumbai — closest to BSE
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8000"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false    # keep warm so the BSE cookie session survives
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.checks]
+    [[http_service.checks.http]]
+      path = "/healthz"
+      interval = "30s"
+      timeout = "5s"
