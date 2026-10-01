@@ -6,6 +6,7 @@ services:
     name: bse-mcp
     runtime: docker
     plan: starter            # avoid the free tier's scale-to-zero (keeps BSE cookies warm)
+    region: singapore        # Render's closest region to India -> lowers BSE IP-block risk
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
