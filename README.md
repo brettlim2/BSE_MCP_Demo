@@ -84,6 +84,18 @@ fly deploy
 ```
 Public URL: `https://<app>.fly.dev/mcp`.
 
+**Google Cloud Run** (Mumbai `asia-south1`). From GCP Cloud Shell (already signed in):
+```bash
+git clone https://github.com/brettlim2/BSE_MCP_Demo.git
+cd BSE_MCP_Demo && git checkout claude/amazing-hopper-2qfars
+PROJECT_ID=your-gcp-project bash deploy/cloudrun.sh
+```
+`deploy/cloudrun.sh` enables the needed APIs, stores `MELTWATER_API_KEY` and a
+generated `MCP_API_KEYS` in Secret Manager, builds via Cloud Build (no local
+Docker), and deploys with `--min-instances=1` (warm for BSE). It prints the public
+`/mcp` URL. Requires billing enabled; `--allow-unauthenticated` must be permitted by
+org policy (the endpoint is still gated by `MCP_API_KEYS`).
+
 Any container host works (Railway, Cloud Run, ECS/Fargate) — serve the Docker image,
 expose `$PORT`, keep the instance warm.
 
